@@ -77,4 +77,4 @@
 - HTTP — встроенный `fetch`; тесты — `node:test`; аргументы — `node:util` `parseArgs`. Новые зависимости
   в рантайм не добавлять без веской причины.
 - Команды: `npm start -- <url>`, `npm test`, `npm run lint`, `npm run typecheck`, `npm run format`.
-- План и методика замера — в `PLAN.md`.
+- План разработки и принятые решения — в `docs/PLAN.md`; итоговая методика для пользователя — в `README.md`.

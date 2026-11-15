@@ -57,6 +57,14 @@ describe('cli', () => {
     assert.match(result.stdout, /^Downloading .+ 1 time\.\.\.$/m);
   });
 
+  it('rejects a URL with embedded credentials without echoing them', async () => {
+    const result = await runCli(['https://user:top-secret@example.com/file']);
+
+    assert.equal(result.exitCode, 2);
+    assert.match(result.stderr, /URLs with embedded credentials .* are not supported/);
+    assert.doesNotMatch(result.stdout + result.stderr, /top-secret/);
+  });
+
   it('exits with 1 and names the failed request', async () => {
     let requests = 0;
     await using server = await startServer((_request, response) => {

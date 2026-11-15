@@ -29,8 +29,9 @@ export function summarize(samples: readonly Sample[]): Summary {
     totalBytes,
     totalDurationMs,
     averageDurationMs: totalDurationMs / samples.length,
-    minDurationMs: Math.min(...durations),
-    maxDurationMs: Math.max(...durations),
+    // reduce, not Math.min(...durations): spreading a huge array exceeds the call argument limit.
+    minDurationMs: durations.reduce((min, duration) => Math.min(min, duration)),
+    maxDurationMs: durations.reduce((max, duration) => Math.max(max, duration)),
     bitsPerSecond: (totalBytes * BITS_PER_BYTE) / (totalDurationMs / MS_PER_SECOND),
   };
 }

@@ -87,6 +87,10 @@ function parseUrl(value: string): URL {
   if (!SUPPORTED_PROTOCOLS.has(url.protocol)) {
     throw new UsageError(`Unsupported protocol ${url.protocol} — use http or https`);
   }
+  // fetch refuses such URLs, and echoing them back would leak the credentials into logs.
+  if (url.username !== '' || url.password !== '') {
+    throw new UsageError('URLs with embedded credentials (user:password@host) are not supported');
+  }
   return url;
 }
 
@@ -99,7 +103,8 @@ function parseCount(value: string): number {
 }
 
 function parseTimeoutMs(value: string): number {
-  const seconds = value.trim() === '' ? Number.NaN : Number(value);
+  // Plain decimals only: Number() would also accept "0x10", "1e1" and surrounding whitespace.
+  const seconds = /^\d+(\.\d+)?$/.test(value) ? Number(value) : Number.NaN;
   const ms = seconds * MS_PER_SECOND;
   if (!Number.isFinite(ms) || ms < 1 || ms > MAX_TIMEOUT_MS) {
     throw new UsageError(

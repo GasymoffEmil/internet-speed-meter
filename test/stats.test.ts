@@ -42,6 +42,15 @@ describe('summarize', () => {
     assert.equal(summary.bitsPerSecond, 80_000);
   });
 
+  it('handles a very large number of samples', () => {
+    const samples = Array.from({ length: 500_000 }, (_, i) => ({ bytes: 1, durationMs: i + 1 }));
+
+    const summary = summarize(samples);
+
+    assert.equal(summary.minDurationMs, 1);
+    assert.equal(summary.maxDurationMs, 500_000);
+  });
+
   it('reports zero speed for empty responses', () => {
     const summary = summarize([{ bytes: 0, durationMs: 10 }]);
 
