@@ -113,9 +113,25 @@ describe('createFetchDownloader', () => {
 
       await assert.rejects(downloader.download(url), (error: unknown) => {
         assert.ok(error instanceof NetworkError);
-        assert.match(error.message, /ECONNREFUSED/);
+        assert.match(error.message, /^Network error: .*ECONNREFUSED/);
         return true;
       });
+    });
+
+    it('reports an unresolvable host without repeating the error code', async () => {
+      // The .invalid TLD is reserved and guaranteed never to resolve (RFC 2606).
+      await assert.rejects(
+        downloader.download(new URL('http://speedtest.invalid/')),
+        (error: unknown) => {
+          assert.ok(error instanceof NetworkError);
+          // EAI_AGAIN instead of ENOTFOUND when the machine has no DNS at all.
+          assert.match(
+            error.message,
+            /^Network error: getaddrinfo (ENOTFOUND|EAI_AGAIN) speedtest\.invalid$/,
+          );
+          return true;
+        },
+      );
     });
 
     it('reports a connection dropped mid-body', async () => {

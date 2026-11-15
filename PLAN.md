@@ -44,17 +44,17 @@
 
 ```
 src/
-  cli.ts              // точка входа: аргументы → run → вывод, коды выхода
-  config.ts           // парсинг и валидация аргументов (URL, count, timeout)
-  measurement.ts      // runMeasurements(downloader, url, count) → Sample[]
+  cli.ts              // точка входа: аргументы → замеры → вывод; коды выхода 0 / 1 (сбой) / 2 (аргументы)
+  config.ts           // parseCommand(args) → help | measure(Config); валидация URL, --count, --timeout
+  measurement.ts      // runMeasurements({ downloader, url, count, onSample }) → Sample[]
   downloader.ts       // интерфейс Downloader + реализация на fetch (поток, подсчёт байт)
   sample.ts           // тип Sample — результат одного скачивания (байты, время)
   units.ts            // константы единиц (SI, биты/байты)
   stats.ts            // чистые функции: summarize(samples) → Summary
   format.ts           // чистые функции форматирования единиц и отчёта
-  errors.ts           // ошибки скачивания (DownloadError и наследники); ошибки аргументов — этап 4
+  errors.ts           // UsageError; DownloadError и наследники (HTTP-статус, таймаут, сеть)
 test/
-  stats.test.ts, format.test.ts, config.test.ts   // unit
+  stats, format, config, measurement .test.ts     // unit (measurement — с подменным Downloader)
   downloader.test.ts, cli.test.ts                 // интеграционные с локальным HTTP-сервером
   support/server.ts                               // локальный HTTP-сервер для тестов (await using)
 ```
@@ -75,7 +75,7 @@ test/
    Интеграционные тесты с локальным сервером (известный размер, 404/500, зависший ответ). ✅
    → коммит `feat: add streaming http downloader`
 4. **Оркестрация и CLI** — `measurement.ts`, `config.ts`, `cli.ts`; валидация аргументов (`--count`,
-   `--timeout`), вывод, коды выхода. Тесты конфига и e2e-запуск CLI против локального сервера.
+   `--timeout`), вывод, коды выхода. Тесты конфига и e2e-запуск CLI против локального сервера. ✅
    → коммит `feat: add cli entrypoint`
 5. **README** — запуск, примеры вывода, единицы, методика, ограничения и что можно улучшить.
    → коммит `docs: add readme`

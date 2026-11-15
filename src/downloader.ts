@@ -65,7 +65,11 @@ function describeNetworkFailure(error: unknown): string {
   if (!(cause instanceof Error)) {
     return `Network error: ${String(cause)}`;
   }
-  const code = 'code' in cause && typeof cause.code === 'string' ? cause.code : undefined;
-  const details = [code, cause.message].filter(Boolean).join(': ');
+  const code = 'code' in cause && typeof cause.code === 'string' ? cause.code : '';
+  // Node often repeats the code inside the message ("getaddrinfo ENOTFOUND host").
+  const details =
+    code === '' || cause.message.includes(code)
+      ? cause.message
+      : [code, cause.message].filter(Boolean).join(': ');
   return `Network error: ${details || cause.name}`;
 }

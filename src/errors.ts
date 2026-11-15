@@ -1,3 +1,8 @@
+/** Invalid command-line input; reported together with the usage text. */
+export class UsageError extends Error {
+  override name = 'UsageError';
+}
+
 /** Expected failure of a single download; reported to the user as a message, without a stack trace. */
 export class DownloadError extends Error {
   override name = 'DownloadError';
