@@ -1,0 +1,77 @@
+# План разработки: замер скорости интернета (CLI, Node.js + TypeScript)
+
+## Задание
+Консольный скрипт: принимает URL, делает 10 последовательных запросов, дожидается полного ответа на каждый,
+считает среднее время запроса и общий объём скачанного, печатает скорость скачивания. Единицы — в README.
+Ориентир 1–2 часа.
+
+## Ключевые решения
+
+### Стек (проверено 2026-11-15)
+| Что | Выбор | Почему |
+|---|---|---|
+| Runtime | Node.js ≥ 24 (`engines`), целевой — 26 Active LTS | Встроенный `fetch`, `node:test`, нативный запуск `.ts` |
+| Запуск TS | Нативный type stripping Node (`node src/cli.ts`) | Без шага сборки и без лишних зависимостей. Рекомендованный Node tsconfig: `erasableSyntaxOnly`, `verbatimModuleSyntax`, `module: nodenext` |
+| Тайпчек | `typescript@6.0.x`, `tsc --noEmit`, `strict` | TS 7.0 уже стабилен, но `typescript-eslint@8.72` поддерживает только `typescript <6.1`. Берём 6.0, чтобы линтер с проверкой типов работал. В README: апгрейд до 7, когда его поддержит typescript-eslint |
+| HTTP | Встроенный `fetch` (undici) | Поток тела (`response.body`) и `AbortSignal.timeout()` из коробки |
+| Тесты | `node:test` + `node:assert`, локальный `node:http` сервер | Без внешних зависимостей |
+| Линт/формат | ESLint 10 (flat config) + typescript-eslint (strictTypeChecked), Prettier 3 | Стандарт индустрии |
+| Аргументы CLI | `node:util` `parseArgs` | Встроен, отдельная библиотека не нужна |
+
+Ограничение type stripping: нельзя `enum`, parameter properties, `namespace` с рантаймом. Это обеспечивает
+`erasableSyntaxOnly`, так что ошибку поймает компилятор, а не рантайм.
+
+### Методика замера
+- **Время запроса** — от вызова `fetch` до получения последнего байта тела; `performance.now()`.
+- **Объём** — сумма длин реально прочитанных чанков тела, а не `Content-Length`.
+- **Сжатие** — `Accept-Encoding: identity`, чтобы считать байты, реально переданные по сети.
+- **Кэш** — `Cache-Control: no-cache`.
+- **Скорость** — общий объём / суммарное время запросов. Это честнее, чем среднее скоростей.
+- **Единицы** — основная: Мбит/с (десятичные, 1 Мбит = 10⁶ бит, как у провайдеров); дополнительно МБ/с;
+  время — мс; объём — МБ (10⁶ байт).
+- **Ошибки** — не-2xx, таймаут, обрыв → понятное сообщение в stderr и exit code ≠ 0, без частичного итога.
+- **Соединение** — keep-alive (поведение fetch по умолчанию). В README: первый запрос включает DNS/TCP/TLS.
+- **Вывод** — строка на каждый запрос (№, время, байты) и итог: среднее / мин / макс время, объём, скорость.
+
+## Архитектура
+```
+src/
+  cli.ts              // точка входа: аргументы → run → вывод, коды выхода
+  config.ts           // парсинг и валидация аргументов (URL, count, timeout)
+  measurement.ts      // runMeasurements(downloader, url, count) → Sample[]
+  downloader.ts       // интерфейс Downloader + реализация на fetch (поток, подсчёт байт)
+  stats.ts            // чистые функции: summarize(samples) → Summary
+  format.ts           // чистые функции форматирования единиц и отчёта
+  errors.ts           // доменные ошибки (HttpStatusError, TimeoutError, InvalidArgumentError)
+test/
+  stats.test.ts, format.test.ts, config.test.ts   // unit
+  downloader.test.ts, cli.test.ts                 // интеграционные с локальным HTTP-сервером
+```
+Зависимости направлены внутрь: `cli` → `measurement` → интерфейс `Downloader`. Ядро не знает о `fetch`
+и консоли. Точка расширения — `Downloader`: другой протокол или клиент подключается без изменения логики.
+
+## Этапы
+
+1. **Каркас** — `package.json` (`type: module`, `engines`, scripts: `start`, `test`, `lint`, `typecheck`,
+   `format`), `tsconfig.json`, `eslint.config.js`, `.prettierrc`, `.gitignore`, `.editorconfig`,
+   заготовка README. Заполнить «Стек и команды» в CLAUDE.md.
+   → коммит `chore: scaffold project tooling`
+2. **Ядро** — `stats.ts`, `format.ts`, `errors.ts` + unit-тесты (включая крайние случаи: нулевое время,
+   нулевой объём, один замер).
+   → коммит `feat: add stats and formatting core`
+3. **Скачивание** — `downloader.ts`: поток тела, подсчёт байт, заголовки, проверка статуса, таймаут.
+   Интеграционные тесты с локальным сервером (известный размер, 404/500, зависший ответ).
+   → коммит `feat: add streaming http downloader`
+4. **Оркестрация и CLI** — `measurement.ts`, `config.ts`, `cli.ts`; валидация аргументов (`--count`,
+   `--timeout`), вывод, коды выхода. Тесты конфига и e2e-запуск CLI против локального сервера.
+   → коммит `feat: add cli entrypoint`
+5. **README** — запуск, примеры вывода, единицы, методика, ограничения и что можно улучшить.
+   → коммит `docs: add readme`
+6. **Финальная проверка** — `npm run lint && npm run typecheck && npm test`, ручной прогон на реальном
+   большом файле, ревью кода глазами ревьюера.
+
+## Проверка
+- `npm test` — unit + интеграционные тесты, зелёные.
+- `npm run lint`, `npm run typecheck` — без ошибок и предупреждений.
+- `npm start -- <url>` на реальном тяжёлом файле — адекватные цифры, сверка с объёмом файла.
+- Неверный URL / 404 / недоступный хост — понятная ошибка, exit code ≠ 0.
