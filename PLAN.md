@@ -44,9 +44,11 @@ src/
   config.ts           // парсинг и валидация аргументов (URL, count, timeout)
   measurement.ts      // runMeasurements(downloader, url, count) → Sample[]
   downloader.ts       // интерфейс Downloader + реализация на fetch (поток, подсчёт байт)
+  sample.ts           // тип Sample — результат одного скачивания (байты, время)
+  units.ts            // константы единиц (SI, биты/байты)
   stats.ts            // чистые функции: summarize(samples) → Summary
   format.ts           // чистые функции форматирования единиц и отчёта
-  errors.ts           // доменные ошибки (HttpStatusError, TimeoutError, InvalidArgumentError)
+  errors.ts           // доменные ошибки — появляются вместе с кодом, который их бросает (этапы 3–4)
 test/
   stats.test.ts, format.test.ts, config.test.ts   // unit
   downloader.test.ts, cli.test.ts                 // интеграционные с локальным HTTP-сервером
@@ -59,10 +61,10 @@ test/
 
 1. **Каркас** — `package.json` (`type: module`, `engines`, scripts: `start`, `test`, `lint`, `typecheck`,
    `format`), `tsconfig.json`, `eslint.config.js`, `.prettierrc`, `.gitignore`, `.editorconfig`,
-   заготовка README. Заполнить «Стек и команды» в CLAUDE.md.
+   заготовка README. Заполнить «Стек и команды» в CLAUDE.md. ✅
    → коммит `chore: scaffold project tooling`
-2. **Ядро** — `stats.ts`, `format.ts`, `errors.ts` + unit-тесты (включая крайние случаи: нулевое время,
-   нулевой объём, один замер).
+2. **Ядро** — `sample.ts`, `units.ts`, `stats.ts`, `format.ts` + unit-тесты (включая крайние случаи:
+   некорректные замеры, нулевой объём, один замер). ✅
    → коммит `feat: add stats and formatting core`
 3. **Скачивание** — `downloader.ts`: поток тела, подсчёт байт, заголовки, проверка статуса, таймаут.
    Интеграционные тесты с локальным сервером (известный размер, 404/500, зависший ответ).
