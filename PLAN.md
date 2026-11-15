@@ -48,13 +48,14 @@ src/
   config.ts           // parseCommand(args) → help | measure(Config); валидация URL, --count, --timeout
   measurement.ts      // runMeasurements({ downloader, url, count, onSample }) → Sample[]
   downloader.ts       // интерфейс Downloader + реализация на fetch (поток, подсчёт байт)
+  network-failure.ts  // перевод сетевых ошибок fetch (коды Node/undici) в понятные сообщения
   sample.ts           // тип Sample — результат одного скачивания (байты, время)
   units.ts            // константы единиц (SI, биты/байты)
   stats.ts            // чистые функции: summarize(samples) → Summary
   format.ts           // чистые функции форматирования единиц и отчёта
   errors.ts           // UsageError; DownloadError и наследники (HTTP-статус, таймаут, сеть)
 test/
-  stats, format, config, measurement .test.ts     // unit (measurement — с подменным Downloader)
+  stats, format, config, measurement, network-failure .test.ts  // unit (measurement — с подменным Downloader)
   downloader.test.ts, cli.test.ts                 // интеграционные с локальным HTTP-сервером
   support/server.ts                               // локальный HTTP-сервер для тестов (await using)
 ```

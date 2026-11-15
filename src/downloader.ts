@@ -1,4 +1,5 @@
 import { DownloadError, HttpStatusError, NetworkError, RequestTimeoutError } from './errors.ts';
+import { describeNetworkFailure } from './network-failure.ts';
 import type { Sample } from './sample.ts';
 
 export interface Downloader {
@@ -57,19 +58,4 @@ export function createFetchDownloader(options: FetchDownloaderOptions): Download
       }
     },
   };
-}
-
-/** fetch reports every network failure as `TypeError: fetch failed`; the useful detail is in `cause`. */
-function describeNetworkFailure(error: unknown): string {
-  const cause = error instanceof Error && error.cause instanceof Error ? error.cause : error;
-  if (!(cause instanceof Error)) {
-    return `Network error: ${String(cause)}`;
-  }
-  const code = 'code' in cause && typeof cause.code === 'string' ? cause.code : '';
-  // Node often repeats the code inside the message ("getaddrinfo ENOTFOUND host").
-  const details =
-    code === '' || cause.message.includes(code)
-      ? cause.message
-      : [code, cause.message].filter(Boolean).join(': ');
-  return `Network error: ${details || cause.name}`;
 }

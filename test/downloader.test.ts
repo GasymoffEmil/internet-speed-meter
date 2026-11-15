@@ -75,13 +75,17 @@ describe('createFetchDownloader', () => {
       await assert.rejects(impatient.download(server.url), RequestTimeoutError);
     });
 
-    it('fires when the body stalls midway', async () => {
+    it('fires when the body stalls midway, as when the network silently disappears', async () => {
       await using server = await startServer((_request, response) => {
         response.write(CHUNK);
         // Never end.
       });
 
-      await assert.rejects(impatient.download(server.url), RequestTimeoutError);
+      await assert.rejects(impatient.download(server.url), {
+        name: 'RequestTimeoutError',
+        message:
+          'No data received for 0.1 s — the connection may have been lost or the server is not responding',
+      });
     });
 
     it('does not cut off a slow download that keeps making progress', async () => {
@@ -113,13 +117,17 @@ describe('createFetchDownloader', () => {
 
       await assert.rejects(downloader.download(url), (error: unknown) => {
         assert.ok(error instanceof NetworkError);
-        assert.match(error.message, /^Network error: .*ECONNREFUSED/);
+        assert.match(
+          error.message,
+          /^Network error: the server refused the connection \(.*ECONNREFUSED/,
+        );
         return true;
       });
     });
 
-    it('reports an unresolvable host without repeating the error code', async () => {
-      // The .invalid TLD is reserved and guaranteed never to resolve (RFC 2606).
+    it('points to the internet connection when the host cannot be resolved', async () => {
+      // The .invalid TLD is reserved and guaranteed never to resolve (RFC 2606) — the same
+      // failure a hostname gets when the machine is offline from the start.
       await assert.rejects(
         downloader.download(new URL('http://speedtest.invalid/')),
         (error: unknown) => {
@@ -127,20 +135,49 @@ describe('createFetchDownloader', () => {
           // EAI_AGAIN instead of ENOTFOUND when the machine has no DNS at all.
           assert.match(
             error.message,
-            /^Network error: getaddrinfo (ENOTFOUND|EAI_AGAIN) speedtest\.invalid$/,
+            /^Network error: could not resolve the host name — check the URL and your internet connection \(getaddrinfo (ENOTFOUND|EAI_AGAIN) speedtest\.invalid\)$/,
           );
           return true;
         },
       );
     });
 
-    it('reports a connection dropped mid-body', async () => {
+    it('fails instead of counting a partial body when the connection drops mid-body', async () => {
+      await using server = await startServer((_request, response) => {
+        // Announce the full size, deliver only part of it, then lose the connection.
+        response.writeHead(200, { 'content-length': 4 * CHUNK.length });
+        response.write(CHUNK);
+        response.destroy();
+      });
+
+      await assert.rejects(downloader.download(server.url), (error: unknown) => {
+        assert.ok(error instanceof NetworkError);
+        assert.match(error.message, /^Network error: the connection was lost/);
+        return true;
+      });
+    });
+
+    it('fails when a chunked body is cut off', async () => {
       await using server = await startServer((_request, response) => {
         response.write(CHUNK);
         response.destroy();
       });
 
       await assert.rejects(downloader.download(server.url), NetworkError);
+    });
+
+    it('recovers when the kept-alive connection died between requests', async () => {
+      await using server = await startServer((_request, response) => {
+        response.end(CHUNK);
+        // Drop the socket right after a successful response, as a flaky network would.
+        response.once('finish', () => response.socket?.destroy());
+      });
+
+      const first = await downloader.download(server.url);
+      const second = await downloader.download(server.url);
+
+      assert.equal(first.bytes, CHUNK.length);
+      assert.equal(second.bytes, CHUNK.length);
     });
   });
 });

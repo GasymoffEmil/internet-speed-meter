@@ -1,3 +1,5 @@
+import { MS_PER_SECOND } from './units.ts';
+
 /** Invalid command-line input; reported together with the usage text. */
 export class UsageError extends Error {
   override name = 'UsageError';
@@ -22,7 +24,10 @@ export class RequestTimeoutError extends DownloadError {
   override name = 'RequestTimeoutError';
 
   constructor(idleTimeoutMs: number) {
-    super(`No data received for ${String(idleTimeoutMs)} ms`);
+    super(
+      `No data received for ${String(idleTimeoutMs / MS_PER_SECOND)} s — ` +
+        'the connection may have been lost or the server is not responding',
+    );
   }
 }
 
