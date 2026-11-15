@@ -15,7 +15,7 @@
 | Runtime       | Node.js ≥ 24 (`engines`), целевой — 26 Active LTS                           | Встроенный `fetch`, `node:test`, нативный запуск `.ts`                                                                                                                                                   |
 | Запуск TS     | Нативный type stripping Node (`node src/cli.ts`)                            | Без шага сборки и без лишних зависимостей. Рекомендованный Node tsconfig: `erasableSyntaxOnly`, `verbatimModuleSyntax`, `module: nodenext`                                                               |
 | Тайпчек       | `typescript@6.0.x`, `tsc --noEmit`, `strict`                                | TS 7.0 уже стабилен, но `typescript-eslint@8.72` поддерживает только `typescript <6.1`. Берём 6.0, чтобы линтер с проверкой типов работал. В README: апгрейд до 7, когда его поддержит typescript-eslint |
-| HTTP          | Встроенный `fetch` (undici)                                                 | Поток тела (`response.body`) и `AbortSignal.timeout()` из коробки                                                                                                                                        |
+| HTTP          | `fetch` + `Agent` из пакета `undici` 8 (изначально — встроенный `fetch`)    | Поток тела (`response.body`) и `AbortSignal.timeout()` из коробки                                                                                                                                        |
 | Тесты         | `node:test` + `node:assert`, локальный `node:http` сервер                   | Без внешних зависимостей                                                                                                                                                                                 |
 | Линт/формат   | ESLint 10 (flat config) + typescript-eslint (strictTypeChecked), Prettier 3 | Стандарт индустрии                                                                                                                                                                                       |
 | Аргументы CLI | `node:util` `parseArgs`                                                     | Встроен, отдельная библиотека не нужна                                                                                                                                                                   |
@@ -38,6 +38,10 @@
 - **Ограничение** — `fetch` прозрачно распаковывает сжатые ответы; если сервер проигнорирует
   `identity`, посчитается распакованный объём. Описать в README.
 - **Соединение** — keep-alive (поведение fetch по умолчанию). В README: первый запрос включает DNS/TCP/TLS.
+- **Протокол** — всегда HTTP/1.1. Обнаружено при проверке на Node 26: встроенный `fetch` (undici 8) уходит
+  в HTTP/2, и один поток упирается в окно управления потоком (~20 вместо ~150 Мбит/с). Решение — пакет
+  `undici` с `Agent({ allowH2: false })` вместо встроенного `fetch`; закреплено e2e-тестом с HTTPS-сервером,
+  предпочитающим HTTP/2.
 - **Вывод** — строка на каждый запрос (№, время, байты) и итог: среднее / мин / макс время, объём, скорость.
 
 ## Архитектура

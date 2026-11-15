@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { startServer } from './support/server.ts';
+import { startHttp2Server, startServer } from './support/server.ts';
 
 const CLI_PATH = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
+// Self-signed, test-only certificate for localhost / 127.0.0.1.
+const CERT_PATH = fileURLToPath(new URL('fixtures/localhost-cert.pem', import.meta.url));
+const TLS = {
+  cert: readFileSync(CERT_PATH),
+  key: readFileSync(new URL('fixtures/localhost-key.pem', import.meta.url)),
+};
 
 interface CliResult {
   readonly exitCode: number | null;
@@ -14,8 +21,11 @@ interface CliResult {
 }
 
 /** Runs the CLI as a real child process, exactly as a user would. */
-async function runCli(args: readonly string[]): Promise<CliResult> {
-  const child = spawn(process.execPath, [CLI_PATH, ...args]);
+async function runCli(
+  args: readonly string[],
+  env: Readonly<Record<string, string>> = {},
+): Promise<CliResult> {
+  const child = spawn(process.execPath, [CLI_PATH, ...args], { env: { ...process.env, ...env } });
   let stdout = '';
   let stderr = '';
   child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
@@ -44,6 +54,21 @@ describe('cli', () => {
     assert.match(result.stdout, /^Requests: +3$/m);
     assert.match(result.stdout, /^Downloaded: +750\.00 kB$/m);
     assert.match(result.stdout, /^Download speed: +[\d,.]+ Mbit\/s \([\d,.]+ MB\/s\)$/m);
+  });
+
+  it('downloads over HTTP/1.1 even when the server prefers HTTP/2', async () => {
+    // A single HTTP/2 stream is capped by its flow-control window and under-reports the speed.
+    const httpVersions: string[] = [];
+    await using server = await startHttp2Server(TLS, (request, response) => {
+      httpVersions.push(request.httpVersion);
+      response.end('x');
+    });
+
+    // The CA must be trusted at process start, hence the env var for the child process.
+    const result = await runCli([server.url.href, '-n', '2'], { NODE_EXTRA_CA_CERTS: CERT_PATH });
+
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.deepEqual(httpVersions, ['1.1', '1.1']);
   });
 
   it('uses singular wording for a single request', async () => {

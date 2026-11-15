@@ -74,7 +74,8 @@
 
 - Node.js ≥ 24 (целевой 26 LTS), TypeScript 6.0 (strict), ES modules. Запуск `.ts` напрямую через нативный
   type stripping Node — без сборки. Только стираемый синтаксис: без `enum`, parameter properties, `namespace`.
-- HTTP — встроенный `fetch`; тесты — `node:test`; аргументы — `node:util` `parseArgs`. Новые зависимости
-  в рантайм не добавлять без веской причины.
+- HTTP — `fetch` из пакета `undici` 8 с `Agent({ allowH2: false })`: встроенный `fetch` на Node 26 уходит
+  в HTTP/2 и занижает замер (окно управления потоком). Тесты — `node:test`; аргументы — `node:util`
+  `parseArgs`. Других runtime-зависимостей не добавлять без веской причины.
 - Команды: `npm start -- <url>`, `npm test`, `npm run lint`, `npm run typecheck`, `npm run format`.
 - План разработки и принятые решения — в `docs/PLAN.md`; итоговая методика для пользователя — в `README.md`.

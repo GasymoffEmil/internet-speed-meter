@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { IncomingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
-import { describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { createFetchDownloader } from '../src/downloader.ts';
@@ -12,6 +12,7 @@ const CHUNK = Buffer.alloc(64 * 1024, 1);
 
 describe('createFetchDownloader', () => {
   const downloader = createFetchDownloader({ idleTimeoutMs: 1000 });
+  after(() => downloader[Symbol.asyncDispose]());
 
   it('counts every byte of a streamed body', async () => {
     await using server = await startServer((_request, response) => {
@@ -66,6 +67,7 @@ describe('createFetchDownloader', () => {
 
   describe('idle timeout', () => {
     const impatient = createFetchDownloader({ idleTimeoutMs: 100 });
+    after(() => impatient[Symbol.asyncDispose]());
 
     it('fires when the server never responds', async () => {
       await using server = await startServer(() => {

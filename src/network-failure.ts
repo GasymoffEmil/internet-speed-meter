@@ -8,7 +8,6 @@ const EXPLANATIONS = new Map<string, string>([
   ['ENETUNREACH', `the network is unreachable — ${CHECK_CONNECTION}`],
   ['EHOSTUNREACH', `the host is unreachable — ${CHECK_CONNECTION}`],
   ['ENETDOWN', `the network is down — ${CHECK_CONNECTION}`],
-  ['UND_ERR_CONNECT_TIMEOUT', `could not connect in time — ${CHECK_CONNECTION}`],
   ['ETIMEDOUT', `the connection timed out — ${CHECK_CONNECTION}`],
   ['ECONNREFUSED', 'the server refused the connection'],
   ['ECONNRESET', `the connection was lost — ${CHECK_CONNECTION}`],

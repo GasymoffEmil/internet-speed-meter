@@ -29,10 +29,11 @@ async function main(args: readonly string[]): Promise<number> {
   const { url, count, idleTimeoutMs } = command.config;
   console.log(`Downloading ${url.href} ${String(count)} ${count === 1 ? 'time' : 'times'}...\n`);
 
+  await using downloader = createFetchDownloader({ idleTimeoutMs });
   let completed = 0;
   try {
     const samples = await runMeasurements({
-      downloader: createFetchDownloader({ idleTimeoutMs }),
+      downloader,
       url,
       count,
       onSample: (sample, index) => {

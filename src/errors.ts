@@ -23,10 +23,11 @@ export class HttpStatusError extends DownloadError {
 export class RequestTimeoutError extends DownloadError {
   override name = 'RequestTimeoutError';
 
-  constructor(idleTimeoutMs: number) {
+  constructor(idleTimeoutMs: number, options?: ErrorOptions) {
     super(
       `No data received for ${String(idleTimeoutMs / MS_PER_SECOND)} s — ` +
         'the connection may have been lost or the server is not responding',
+      options,
     );
   }
 }
